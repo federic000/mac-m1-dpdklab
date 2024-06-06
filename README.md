@@ -33,12 +33,12 @@ the intent of this project is to help all the people compiling dpdk apps for tes
 5. untar the dpdk archive, cd into the extracted directory
 6. ```meson setup <options> build ``` now for the options since dpdk does not support Apple's Silicon ARM64 (only BlueField, DPAA, DPAA2 and OCTEON are currently supported) we need to specify a generic Platform to make it finish the build process, as a consequence we do not get a configuration optimized build for the M1 SoC.
     -  ``` meson setup -Dplatform=generic build ```
-    -  ``` cd build
-           ninja
-           ninja install
-           ldconfig ```
+    -  ``` cd build ```
+    -  ``` ninja ```
+    -  ``` ninja install ```
+    -  ``` ldconfig ```
 7. test
-8. torr       
+   
 
 
 # ovs-dpdk installation and packages 
