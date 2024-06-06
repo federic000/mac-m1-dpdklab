@@ -7,10 +7,19 @@ the intent of this project is to help all the people compiling dpdk apps for tes
 # hardware and software setup 
 1. Any MAC with arm64 cpu would fit, in this case i'm using a 2021 MacBook PRO.
 2. macOS 14.4 Sonoma and VMware Fusion 13.5.2
-3. the VM used in the lab: Ubuntu 24.4 ARM64 for both client and OVS host. 
+3. the VM used in the lab: Ubuntu 24.4 ARM64 for both client and OVS hoss, ubuntu-24.04-live-server-arm64.iso is the one i've used. 
+4. hardware setup for the Ubuntu VM is as follows:
+   - 4 processors
+   - 8GB RAM
+   - 100GB disk (thin)
+   - 4 network interfaces
+     - 1st is shared with your MAC or attached to a bridge in case you need SSH access from local terminal 
+     - 2nd, 3rd and 4th are connected to isolated network (vmnet2/vmnet3 in Fusion) 
+5. once Ubuntu installation is done set you preferred access method (ssh requires ens160 IP address setup, VNC, or login straight from Fusion console) 
 
 # dpdk installation and packages 
-Download the dpdk tar archive from [official dpdk.org link](https://core.dpdk.org/download/) preferring an LTS version
+Download the dpdk tar archive from [official dpdk.org link](https://core.dpdk.org/download/) preferring an LTS version.
+
 
 
 # ovs-dpdk installation and packages 
