@@ -15,12 +15,18 @@ the intent of this project is to help all the people compiling dpdk apps for tes
    - 4 network interfaces
      - 1st is shared with your MAC or attached to a bridge in case you need SSH access from local terminal 
      - 2nd, 3rd and 4th are connected to isolated network (vmnet2/vmnet3 in Fusion) 
-5. once Ubuntu installation is done set you preferred access method (ssh requires ens160 IP address setup, VNC, or login straight from Fusion console) 
+5. once Ubuntu installation is done set you preferred access method (ssh requires ens160 IP address setup, VNC, or login straight from Fusion console)
+6. check internet connectivity, apt -y update/upgrade, go to next section. 
 
 # dpdk installation and packages 
-Download the dpdk tar archive from [official dpdk.org link](https://core.dpdk.org/download/) preferring an LTS version.
+1. Download the dpdk tar archive from [official dpdk.org link](https://core.dpdk.org/download/) preferring an LTS version.
+2. Officlal installation instructions for Linux [here](https://doc.dpdk.org/guides/linux_gsg/index.html)
+3. follow chapter 2.2. Compilation of the DPDK - Required Tools and Libraries
+   - ``` apt install build-essential ``` 
+   - 
+   - 
 
-
+support ARM chipsets BlueField, DPAA, DPAA2, OCTEON
 
 # ovs-dpdk installation and packages 
 
