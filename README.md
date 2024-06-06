@@ -20,14 +20,26 @@ the intent of this project is to help all the people compiling dpdk apps for tes
 
 # dpdk installation and packages 
 1. Download the dpdk tar archive from [official dpdk.org link](https://core.dpdk.org/download/) preferring an LTS version.
-2. Officlal installation instructions for Linux [here](https://doc.dpdk.org/guides/linux_gsg/index.html)
-3. follow chapter 2.2. Compilation of the DPDK - Required Tools and Libraries not exactly as in the docs, for Ubuntu 24.4 you can do it all via apt: 
+2. Official installation instructions for Linux [here](https://doc.dpdk.org/guides/linux_gsg/index.html)
+3. as root, follow chapter 2.2. Compilation of the DPDK - Required Tools and Libraries is not exactly as in the docs, for Ubuntu 24.4 you can do it all via apt: 
    - ``` apt -y install build-essential ``` 
-   - ``` apt -y install meson ``` (will take care of ninja2 as well) 
+   - ``` apt -y install meson ``` (it will take care of ninja2 as well) 
    - ``` apt -y install python3-pyelftools ```
    - ``` apt -y install libnuma-dev ```
+4. Reserving Hugepages for DPDK it's an important requirement:
+   - echo 2048 > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages
+   - to keep it across reboots, edit `/etc/default/grub`
+   - add `GRUB_CMDLINE_LINUX_DEFAULT="hugepages=2048"` 
+5. untar the dpdk archive, cd into the extracted directory
+6. ```meson setup <options> build ``` now for the options since dpdk does not support Apple's Silicon ARM64 (only BlueField, DPAA, DPAA2 and OCTEON are currently supported) we need to specify a generic Platform to make it finish the build process, as a consequence we do not get a configuration optimized build for the M1 SoC.
+    -  ``` meson setup -Dplatform=generic build ```
+    -  ``` cd build
+           ninja
+           ninja install
+           ldconfig ```
+7. test
+8. torr       
 
-support ARM chipsets BlueField, DPAA, DPAA2, OCTEON
 
 # ovs-dpdk installation and packages 
 
