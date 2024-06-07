@@ -27,9 +27,9 @@ the intent of this project is to help all the people compiling dpdk apps for tes
    - ``` apt -y install python3-pyelftools ```
    - ``` apt -y install libnuma-dev ```
 4. Reserving Hugepages for DPDK it's an important requirement:
-   - echo 2048 > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages
+   - ``` echo 2048 > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages ```
    - to keep it across reboots, edit `/etc/default/grub`
-   - add `GRUB_CMDLINE_LINUX_DEFAULT="hugepages=2048"` 
+   - add `GRUB_CMDLINE_LINUX_DEFAULT="hugepages=2048"` and then ``` update-grub ```
 5. untar the dpdk archive, cd into the extracted directory
 6. ```meson setup <options> build ``` now for the options since dpdk does not support Apple's Silicon ARM64 (only BlueField, DPAA, DPAA2 and OCTEON are currently supported) we need to specify a generic Platform to make it finish the build process, as a consequence we do not get a configuration optimized build for the M1 SoC.
     -  ``` meson setup -Dplatform=generic build ```
