@@ -39,8 +39,53 @@ the intent of this project is to help all the people compiling dpdk apps for tes
     -  ``` ldconfig ```
 7. you can see the newly compiled dpdk libraries in your `/usr/local/lib/aarch64-linux-gnu/` directory 
 
+## the driver choice
 
-# ovs-dpdk installation and packages 
+for some unknown reason that i've not investigated further, i could not use the vfio-pci driver (more secure) as per ovs-dpdk documentation suggests. 
+
+the root cause of this could lie in the M1 silicon not allwing nested VM or not having the intel VT-d extensions, in any case binding interfaces on the M1 with vfio-pci on a running VM wasn't working hence, for simulation purposes, it's ok to stick with the uio_pci_generic driver which does not support virtual functions, so these ports can't be bound to sr-iov based network functions. 
+
+We can now load the PMD (virtio Poll Mode Driver) driver with modprobe, then check with lsmod the correct loading 
+```root@suppuione:~/modprobe uio_pci_generic``` 
+
+Now it's time to bind interfaces to dpdk drivers, on the directory as `~/dpdk-stable-23.11.1/usertools#` there's a command line utility that lists interfaces and the drivers they are using 
+```
+root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -s
+
+Network devices using kernel driver
+===================================
+0000:02:00.0 '82574L Gigabit Network Connection 10d3' if=ens160 drv=e1000e unused=uio_pci_generic *Active*
+0000:0a:00.0 '82574L Gigabit Network Connection 10d3' if=ens192 drv=e1000e unused=uio_pci_generic 
+0000:12:00.0 '82574L Gigabit Network Connection 10d3' if=ens224 drv=e1000e unused=uio_pci_generic 
+0000:13:00.0 '82574L Gigabit Network Connection 10d3' if=ens225 drv=e1000e unused=uio_pci_generic 
+0000:1a:00.0 '82574L Gigabit Network Connection 10d3' if=ens256 drv=e1000e unused=uio_pci_generic 
+```
+
+I will associated ens192 and ens224 to uio driver:
+
+```
+root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -b uio_pci_generic ens192
+root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -b uio_pci_generic ens224
+root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -s
+```
+
+the listing command now shows the dpdk-compatible driver devices: 
+```
+Network devices using DPDK-compatible driver
+============================================
+0000:0a:00.0 '82574L Gigabit Network Connection 10d3' drv=uio_pci_generic unused=e1000e
+0000:12:00.0 '82574L Gigabit Network Connection 10d3' drv=uio_pci_generic unused=e1000e
+
+Network devices using kernel driver
+===================================
+0000:02:00.0 '82574L Gigabit Network Connection 10d3' if=ens160 drv=e1000e unused=uio_pci_generic *Active*
+0000:13:00.0 '82574L Gigabit Network Connection 10d3' if=ens225 drv=e1000e unused=uio_pci_generic 
+0000:1a:00.0 '82574L Gigabit Network Connection 10d3' if=ens256 drv=e1000e unused=uio_pci_generic 
+```
+
+we are now ready to bring up an ovs-switch and have it using the dpdk ports. 
+
+# ovs-dpdk installation from packages and setup 
 
 On ubuntu we can follow instructions as per this [link](https://ubuntu.com/server/docs/how-to-use-dpdk-with-open-vswitch) with the only exception for the whitelisting flag that has been deprecated and replaced by `--allow`
 
@@ -52,44 +97,59 @@ ovs-vsctl set Open_vSwitch . "other_config:dpdk-init=true"
 ovs-vsctl set Open_vSwitch . "other_config:dpdk-lcore-mask=0x1"
 # Allocate 2G huge pages (not Numa node aware)
 ovs-vsctl set Open_vSwitch . "other_config:dpdk-alloc-mem=2048"
-#(optional step) limit to two comma-separated whitelisted device
+#(optional step) limit to two comma-separated whitelisted device, using the pci-address : 
 ovs-vsctl set Open_vSwitch . "other_config:dpdk-extra=--allow=0000:0a:00.0,0000:12:00.0,0000:1a:00.0"
 service openvswitch-switch restart
 ```
 
+let's check status of the newly created ovs-dpdk switch with the port bidings:  
+```
+root@suppuione:~/dpdk-stable-23.11.1/build/lib# ovs-vsctl show
+800a8e48-c8b3-4a68-941f-e535cf2271d9
+        Bridge ovsdpdkbr0
+        datapath_type: netdev
+        Port ovsdpdkbr0
+            Interface ovsdpdkbr0
+                type: internal
+        Port dpdk0
+            Interface dpdk0
+                type: dpdk
+                options: {dpdk-devargs="0000:0a:00.0"}
+        Port dpdk1
+            Interface dpdk1
+                type: dpdk
+                options: {dpdk-devargs="0000:12:00.0"}
+    ovs_version: "3.3.0"
+```
 
-root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -s
+the configuration as seen from the ovs-db shows the dpdk library version, allocated ports, and the datapath_types (netdev type is mandatory)
 
-Network devices using kernel driver
-===================================
-0000:02:00.0 '82574L Gigabit Network Connection 10d3' if=ens160 drv=e1000e unused=uio_pci_generic *Active*
-0000:0a:00.0 '82574L Gigabit Network Connection 10d3' if=ens192 drv=e1000e unused=uio_pci_generic 
-0000:12:00.0 '82574L Gigabit Network Connection 10d3' if=ens224 drv=e1000e unused=uio_pci_generic 
-0000:13:00.0 '82574L Gigabit Network Connection 10d3' if=ens225 drv=e1000e unused=uio_pci_generic 
-0000:1a:00.0 '82574L Gigabit Network Connection 10d3' if=ens256 drv=e1000e unused=uio_pci_generic 
-
-
-
-root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -b uio_pci_generic ens192
-root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -b uio_pci_generic ens224
-root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -s
-
-Network devices using DPDK-compatible driver
-============================================
-0000:0a:00.0 '82574L Gigabit Network Connection 10d3' drv=uio_pci_generic unused=e1000e
-0000:12:00.0 '82574L Gigabit Network Connection 10d3' drv=uio_pci_generic unused=e1000e
-
-Network devices using kernel driver
-===================================
-0000:02:00.0 '82574L Gigabit Network Connection 10d3' if=ens160 drv=e1000e unused=uio_pci_generic *Active*
-0000:13:00.0 '82574L Gigabit Network Connection 10d3' if=ens225 drv=e1000e unused=uio_pci_generic 
-0000:1a:00.0 '82574L Gigabit Network Connection 10d3' if=ens256 drv=e1000e unused=uio_pci_generic 
-
-
-
-
+```
+root@suppuione:~/dpdk-stable-23.11.1/build/lib# ovs-vsctl list Open_vSwitch
+_uuid               : 800a8e48-c8b3-4a68-941f-e535cf2271d9
+bridges             : [3e14fd9c-f212-439b-a9a3-722f8642b25c, 72fdc8b5-8a98-45fa-a22f-fcf007b7e550]
+cur_cfg             : 27
+datapath_types      : [netdev, system]
+datapaths           : {}
+db_version          : "8.5.0"
+dpdk_initialized    : true
+dpdk_version        : "DPDK 23.11.1"
+external_ids        : {hostname=suppuione, rundir="/var/run/openvswitch", system-id="a257f3ee-ba76-429d-a9f2-c9d8e25e1c95"}
+iface_types         : [afxdp, afxdp-nonpmd, bareudp, dpdk, dpdkvhostuser, dpdkvhostuserclient, erspan, geneve, gre, gtpu, internal, ip6erspan, ip6gre, lisp, patch, srv6, stt, system, tap, vxlan]
+manager_options     : []
+next_cfg            : 27
+other_config        : {dpdk-alloc-mem="1024", dpdk-extra="--allow=0000:0a:00.0,0000:12:00.0,0000:1a:00.0", dpdk-init="true", dpdk-lcore-mask="0x1"}
+ovs_version         : "3.3.0"
+ssl                 : []
+statistics          : {}
+system_type         : ubuntu
+system_version      : "24.04"
+```
+it should be all set now, time for a quick test. 
 
 # a diagram to rule them all 
+
+
 
 # ping testing 
 
