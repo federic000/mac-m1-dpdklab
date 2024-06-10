@@ -37,11 +37,25 @@ the intent of this project is to help all the people compiling dpdk apps for tes
     -  ``` ninja ```
     -  ``` ninja install ```
     -  ``` ldconfig ```
-7. you can see now new dpdk libraries in your /usr/local/lib as in...
-   
+7. you can see the newly compiled dpdk libraries in your `/usr/local/lib/aarch64-linux-gnu/` directory 
 
 
 # ovs-dpdk installation and packages 
+
+On ubuntu we can follow instructions as per this [link](https://ubuntu.com/server/docs/how-to-use-dpdk-with-open-vswitch) with the only exception for the whitelisting flag that has been deprecated and replaced by `--allow`
+
+```
+apt-get install openvswitch-switch-dpdk
+update-alternatives --set ovs-vswitchd /usr/lib/openvswitch-switch-dpdk/ovs-vswitchd-dpdk
+ovs-vsctl set Open_vSwitch . "other_config:dpdk-init=true"
+# run on core 0 only, required for library tasks not for DP 
+ovs-vsctl set Open_vSwitch . "other_config:dpdk-lcore-mask=0x1"
+# Allocate 2G huge pages (not Numa node aware)
+ovs-vsctl set Open_vSwitch . "other_config:dpdk-alloc-mem=2048"
+#(optional step) limit to two comma-separated whitelisted device
+ovs-vsctl set Open_vSwitch . "other_config:dpdk-extra=--allow=0000:0a:00.0,0000:12:00.0,0000:1a:00.0"
+service openvswitch-switch restart
+```
 
 
 root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -s
@@ -103,16 +117,32 @@ root@suppuione2:~# ip netns exec ns2 ip add
 
 # packeth testing 
 
-root@suppuione2:~# ip netns exec ns1 packeth -m 2 -i ens192 -f ./icmp.pcap -t 10 -d 0 
-Sent 305524 packets on ens192; 98 bytes packet length; 305524 packets/s; 239.530 Mbit/s data rate; 298.191 Mbit/s link utilization
-Sent 616242 packets on ens192; 98 bytes packet length; 310718 packets/s; 243.602 Mbit/s data rate; 303.260 Mbit/s link utilization
-Sent 927035 packets on ens192; 98 bytes packet length; 310793 packets/s; 243.661 Mbit/s data rate; 303.333 Mbit/s link utilization
-Sent 1238116 packets on ens192; 98 bytes packet length; 311081 packets/s; 243.887 Mbit/s data rate; 303.615 Mbit/s link utilization
-Sent 1543973 packets on ens192; 98 bytes packet length; 305857 packets/s; 239.791 Mbit/s data rate; 298.516 Mbit/s link utilization
-Sent 1857701 packets on ens192; 98 bytes packet length; 313728 packets/s; 245.962 Mbit/s data rate; 306.198 Mbit/s link utilization
-Sent 2174599 packets on ens192; 98 bytes packet length; 316898 packets/s; 248.448 Mbit/s data rate; 309.292 Mbit/s link utilization
-Sent 2477818 packets on ens192; 98 bytes packet length; 303219 packets/s; 237.723 Mbit/s data rate; 295.941 Mbit/s link utilization
-Sent 2796134 packets on ens192; 98 bytes packet length; 318316 packets/s; 249.559 Mbit/s data rate; 310.676 Mbit/s link utilization
+```root@suppuione2:~# ip netns exec ns2 iperf3 -s
+-----------------------------------------------------------
+Server listening on 5201 (test #1)
+-----------------------------------------------------------
+Accepted connection from 172.16.1.1, port 45256
+[  5] local 172.16.1.2 port 5201 connected to 172.16.1.1 port 43074
+[ ID] Interval           Transfer     Bitrate
+[  5]   0.00-1.00   sec  54.4 MBytes   456 Mbits/sec                  
+[  5]   1.00-2.00   sec  43.5 MBytes   365 Mbits/sec                  
+[  5]   2.00-3.00   sec  43.8 MBytes   367 Mbits/sec                  
+[  5]   3.00-4.00   sec  44.9 MBytes   376 Mbits/sec                  
+[  5]   4.00-5.00   sec  44.9 MBytes   376 Mbits/sec                  
+[  5]   5.00-6.00   sec  45.4 MBytes   381 Mbits/sec                  
+[  5]   6.00-7.00   sec  45.0 MBytes   377 Mbits/sec                  
+[  5]   7.00-8.00   sec  45.1 MBytes   378 Mbits/sec                  
+[  5]   8.00-9.00   sec  44.6 MBytes   374 Mbits/sec                  
+[  5]   9.00-10.00  sec  45.2 MBytes   380 Mbits/sec                  
+[  5]  10.00-10.04  sec  2.75 MBytes   656 Mbits/sec                  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate
+[  5]   0.00-10.04  sec   460 MBytes   384 Mbits/sec                  receiver
+-----------------------------------------------------------
+Server listening on 5201 (test #2)
+-----------------------------------------------------------```
+
+
 
 
 
