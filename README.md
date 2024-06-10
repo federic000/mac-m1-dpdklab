@@ -61,7 +61,7 @@ Network devices using kernel driver
 0000:1a:00.0 '82574L Gigabit Network Connection 10d3' if=ens256 drv=e1000e unused=uio_pci_generic 
 ```
 
-I will associated ens192 and ens224 to uio driver:
+I will associate ens192 and ens224 to uio driver, be aware that interfaces shall be in DOWN state and unconfigured: 
 
 ```
 root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -b uio_pci_generic ens192
@@ -149,6 +149,9 @@ it should be all set now, time for a quick test.
 
 # a diagram to rule them all 
 
+as usual a diagram is worth a thousand words 
+
+![immagine ](./dpdktest01.png)
 
 
 # ping testing 
