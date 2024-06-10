@@ -43,10 +43,77 @@ the intent of this project is to help all the people compiling dpdk apps for tes
 
 # ovs-dpdk installation and packages 
 
+
+root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -s
+
+Network devices using kernel driver
+===================================
+0000:02:00.0 '82574L Gigabit Network Connection 10d3' if=ens160 drv=e1000e unused=uio_pci_generic *Active*
+0000:0a:00.0 '82574L Gigabit Network Connection 10d3' if=ens192 drv=e1000e unused=uio_pci_generic 
+0000:12:00.0 '82574L Gigabit Network Connection 10d3' if=ens224 drv=e1000e unused=uio_pci_generic 
+0000:13:00.0 '82574L Gigabit Network Connection 10d3' if=ens225 drv=e1000e unused=uio_pci_generic 
+0000:1a:00.0 '82574L Gigabit Network Connection 10d3' if=ens256 drv=e1000e unused=uio_pci_generic 
+
+
+
+root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -b uio_pci_generic ens192
+root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -b uio_pci_generic ens224
+root@suppuione:~/dpdk-stable-23.11.1/usertools# ./dpdk-devbind.py -s
+
+Network devices using DPDK-compatible driver
+============================================
+0000:0a:00.0 '82574L Gigabit Network Connection 10d3' drv=uio_pci_generic unused=e1000e
+0000:12:00.0 '82574L Gigabit Network Connection 10d3' drv=uio_pci_generic unused=e1000e
+
+Network devices using kernel driver
+===================================
+0000:02:00.0 '82574L Gigabit Network Connection 10d3' if=ens160 drv=e1000e unused=uio_pci_generic *Active*
+0000:13:00.0 '82574L Gigabit Network Connection 10d3' if=ens225 drv=e1000e unused=uio_pci_generic 
+0000:1a:00.0 '82574L Gigabit Network Connection 10d3' if=ens256 drv=e1000e unused=uio_pci_generic 
+
+
+
+
+
 # a diagram to rule them all 
 
 # ping testing 
 
+root@suppuione2:~# ip netns exec ns1 ip add
+1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+3: ens192: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 00:0c:29:78:3c:b1 brd ff:ff:ff:ff:ff:ff
+    altname enp10s0
+    inet 172.16.1.1/24 scope global ens192
+       valid_lft forever preferred_lft forever
+    inet6 fe80::20c:29ff:fe78:3cb1/64 scope link 
+       valid_lft forever preferred_lft forever
+root@suppuione2:~# ip netns exec ns2 ip add
+1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+4: ens224: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 00:0c:29:78:3c:bb brd ff:ff:ff:ff:ff:ff
+    altname enp18s0
+    inet 172.16.1.2/24 scope global ens224
+       valid_lft forever preferred_lft forever
+    inet6 fe80::20c:29ff:fe78:3cbb/64 scope link 
+       valid_lft forever preferred_lft forever
+
+
 # packeth testing 
+
+root@suppuione2:~# ip netns exec ns1 packeth -m 2 -i ens192 -f ./icmp.pcap -t 10 -d 0 
+Sent 305524 packets on ens192; 98 bytes packet length; 305524 packets/s; 239.530 Mbit/s data rate; 298.191 Mbit/s link utilization
+Sent 616242 packets on ens192; 98 bytes packet length; 310718 packets/s; 243.602 Mbit/s data rate; 303.260 Mbit/s link utilization
+Sent 927035 packets on ens192; 98 bytes packet length; 310793 packets/s; 243.661 Mbit/s data rate; 303.333 Mbit/s link utilization
+Sent 1238116 packets on ens192; 98 bytes packet length; 311081 packets/s; 243.887 Mbit/s data rate; 303.615 Mbit/s link utilization
+Sent 1543973 packets on ens192; 98 bytes packet length; 305857 packets/s; 239.791 Mbit/s data rate; 298.516 Mbit/s link utilization
+Sent 1857701 packets on ens192; 98 bytes packet length; 313728 packets/s; 245.962 Mbit/s data rate; 306.198 Mbit/s link utilization
+Sent 2174599 packets on ens192; 98 bytes packet length; 316898 packets/s; 248.448 Mbit/s data rate; 309.292 Mbit/s link utilization
+Sent 2477818 packets on ens192; 98 bytes packet length; 303219 packets/s; 237.723 Mbit/s data rate; 295.941 Mbit/s link utilization
+Sent 2796134 packets on ens192; 98 bytes packet length; 318316 packets/s; 249.559 Mbit/s data rate; 310.676 Mbit/s link utilization
+
+
 
 here is a [link example](https://pages.github.com/)
