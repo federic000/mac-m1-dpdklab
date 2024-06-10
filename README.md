@@ -16,7 +16,7 @@ the intent of this project is to help all the people compiling dpdk apps for tes
      - 1st is shared with your MAC or attached to a bridge in case you need SSH access from local terminal 
      - 2nd, 3rd and 4th are connected to isolated network (vmnet2/vmnet3 in Fusion) 
 5. once Ubuntu installation is done set you preferred access method (ssh requires ens160 IP address setup, VNC, or login straight from Fusion console)
-6. check internet connectivity, apt -y update/upgrade, go to next section. 
+6. on the VM let's check internet connectivity, issue ```apt -y update; apt -y upgrade```, go to next section. 
 
 # dpdk installation and packages 
 1. Download the dpdk tar archive from [official dpdk.org link](https://core.dpdk.org/download/) preferring an LTS version.
@@ -37,7 +37,7 @@ the intent of this project is to help all the people compiling dpdk apps for tes
     -  ``` ninja ```
     -  ``` ninja install ```
     -  ``` ldconfig ```
-7. test
+7. you can see now new dpdk libraries in your /usr/local/lib as in...
    
 
 
