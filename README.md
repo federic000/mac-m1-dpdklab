@@ -151,11 +151,25 @@ it should be all set now, time for a quick test.
 
 as usual a diagram is worth a thousand words 
 
-![immagine ](./dpdktest01.png)
+![immagine](./dpdktest01.png)
 
+the VM above has ovs-dpdk and two ports attached to the VMware Fusion switches ´vmnet2 / vmnet3`, the VM on the bottom acts as client and has two ports connected to the same Fusion host-only switches. The client has the two interfaces in different namespaces to force traffic going through the ovs-dpdk switch. With few commands we can set namespaces properly on the client (be aware, interface name can be different): 
+```
+ip netns add ns1
+ip netns add ns2
+ip link set ens224 netns ns1
+ip link set ens256 netns ns2
+ip netns exec ns1  ip address add 172.16.1.1/24 dev ens224
+ip netns exec ns2  ip address add 172.16.1.2/24 dev ens256
+ip netns exec ns1  ip link set dev ens224 up
+ip netns exec ns2  ip link set dev ens256 up
+```
 
 # ping testing 
 
+let's check interface status: 
+
+```
 root@suppuione2:~# ip netns exec ns1 ip add
 1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN group default qlen 1000
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
@@ -176,37 +190,62 @@ root@suppuione2:~# ip netns exec ns2 ip add
        valid_lft forever preferred_lft forever
     inet6 fe80::20c:29ff:fe78:3cbb/64 scope link 
        valid_lft forever preferred_lft forever
+```
 
+and we can finally ping the other end: 
+```
+root@suppuione2:~# ip netns exec ns1 ping 172.16.1.2
+PING 172.16.1.2 (172.16.1.2) 56(84) bytes of data.
+64 bytes from 172.16.1.2: icmp_seq=1 ttl=64 time=0.613 ms
+64 bytes from 172.16.1.2: icmp_seq=2 ttl=64 time=0.728 ms
+```
+in case you run into troubles, you can also use `ovs-tcpdump -i dpdk1` to see live packet capture
 
-# packeth testing 
+# pushing traffic through ovs-dpdk 
 
-```root@suppuione2:~# ip netns exec ns2 iperf3 -s
+there are few choices on arm64 when it's about packet generators, ostinato, packeth, mgen, but for simplicity let's use iperf3 which can be simply installed via `apt -y install iperf3`. 
+
+now, on the receiving Namespace on the client VM we let iperf running in server mode: 
+
+```
+root@suppuione2:~# ip netns exec ns2 iperf3 -s
 -----------------------------------------------------------
 Server listening on 5201 (test #1)
 -----------------------------------------------------------
-Accepted connection from 172.16.1.1, port 45256
-[  5] local 172.16.1.2 port 5201 connected to 172.16.1.1 port 43074
-[ ID] Interval           Transfer     Bitrate
-[  5]   0.00-1.00   sec  54.4 MBytes   456 Mbits/sec                  
-[  5]   1.00-2.00   sec  43.5 MBytes   365 Mbits/sec                  
-[  5]   2.00-3.00   sec  43.8 MBytes   367 Mbits/sec                  
-[  5]   3.00-4.00   sec  44.9 MBytes   376 Mbits/sec                  
-[  5]   4.00-5.00   sec  44.9 MBytes   376 Mbits/sec                  
-[  5]   5.00-6.00   sec  45.4 MBytes   381 Mbits/sec                  
-[  5]   6.00-7.00   sec  45.0 MBytes   377 Mbits/sec                  
-[  5]   7.00-8.00   sec  45.1 MBytes   378 Mbits/sec                  
-[  5]   8.00-9.00   sec  44.6 MBytes   374 Mbits/sec                  
-[  5]   9.00-10.00  sec  45.2 MBytes   380 Mbits/sec                  
-[  5]  10.00-10.04  sec  2.75 MBytes   656 Mbits/sec                  
+```
+...and we push traffic from the source Namespace: 
+```
+root@suppuione2:~# ip netns exec ns1 iperf3 -b 0 -u -c 172.16.1.2
+Connecting to host 172.16.1.2, port 5201
+[  5] local 172.16.1.1 port 57870 connected to 172.16.1.2 port 5201
+[ ID] Interval           Transfer     Bitrate         Total Datagrams
+[  5]   0.00-1.00   sec   131 MBytes  1.10 Gbits/sec  95082  
+[  5]   1.00-2.00   sec   128 MBytes  1.07 Gbits/sec  92734  
+[  5]   2.00-3.00   sec   132 MBytes  1.10 Gbits/sec  95339  
+[  5]   3.00-4.00   sec   135 MBytes  1.13 Gbits/sec  97586  
+[  5]   4.00-5.00   sec   132 MBytes  1.11 Gbits/sec  95854  
+[  5]   5.00-6.00   sec   131 MBytes  1.10 Gbits/sec  94693  
+[  5]   6.00-7.00   sec   133 MBytes  1.11 Gbits/sec  96210  
+[  5]   7.00-8.00   sec   132 MBytes  1.11 Gbits/sec  95623  
+[  5]   8.00-9.00   sec   131 MBytes  1.10 Gbits/sec  95042  
+[  5]   9.00-10.00  sec   134 MBytes  1.13 Gbits/sec  97394  
 - - - - - - - - - - - - - - - - - - - - - - - - -
-[ ID] Interval           Transfer     Bitrate
-[  5]   0.00-10.04  sec   460 MBytes   384 Mbits/sec                  receiver
------------------------------------------------------------
-Server listening on 5201 (test #2)
------------------------------------------------------------```
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-10.00  sec  1.29 GBytes  1.11 Gbits/sec  0.000 ms  0/955557 (0%)  sender
+[  5]   0.00-10.15  sec   340 MBytes   281 Mbits/sec  0.004 ms  708910/955375 (74%)  receiver
+```
 
+as you can see, pushing 1Gbit of traffic results in only 281Mbps at the receiving side, packeth does the same but results are not predictable or deterministic, given the environment of the setup: 
 
+```
+root@suppuione2:~# ip netns exec ns1 packeth -m 2 -i ens192 -f ./icmp.pcap -t 5 -d 0  
+  Sent 247761 packets on ens192; 98 bytes packet length; 247761 packets/s; 194.244 Mbit/s data rate; 241.814 Mbit/s link utilization
+  Sent 500824 packets on ens192; 98 bytes packet length; 253063 packets/s; 198.401 Mbit/s data rate; 246.989 Mbit/s link utilization
+  Sent 752093 packets on ens192; 98 bytes packet length; 251269 packets/s; 196.994 Mbit/s data rate; 245.238 Mbit/s link utilization
+  Sent 997161 packets on ens192; 98 bytes packet length; 245068 packets/s; 192.133 Mbit/s data rate; 239.186 Mbit/s link utilization
+------------------------------------------------
+  Sent 1244024 packets on ens192 in 5.000005 second(s).
+```
 
+anyhow, be aware this is not a performance testing environment but it could be useful (hopefully) to set up a dpdk-testing lab for your specific application. 
 
-
-here is a [link example](https://pages.github.com/)
