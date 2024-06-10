@@ -41,12 +41,10 @@ the intent of this project is to help all the people compiling dpdk apps for tes
 
 ## the driver choice
 
-for some unknown reason that i've not investigated further, i could not use the vfio-pci driver (more secure) as per ovs-dpdk documentation suggests. 
-
-the root cause of this could lie in the M1 silicon not allwing nested VM or not having the intel VT-d extensions, in any case binding interfaces on the M1 with vfio-pci on a running VM wasn't working hence, for simulation purposes, it's ok to stick with the uio_pci_generic driver which does not support virtual functions, so these ports can't be bound to sr-iov based network functions. 
+for some unknown reason that i've not deeply investigated, i could not use the vfio-pci driver (more secure) as per ovs-dpdk documentation suggests. The root cause of this could lie in the M1 silicon not allwing nested VM or not having the intel VT-d extensions, in any case binding interfaces on the M1 with vfio-pci on a running VM wasn't working hence, for simulation purposes, it's ok to stick with the uio_pci_generic driver which does not support virtual functions, so these ports can't be bound to sr-iov based network functions. 
 
 We can now load the PMD (virtio Poll Mode Driver) driver with modprobe, then check with lsmod the correct loading 
-```root@suppuione:~/modprobe uio_pci_generic``` 
+```root@suppuione:~/modprobe uio_pci_generic``` (you can add it to `/etc/modules` to have it loaded on each boot) 
 
 Now it's time to bind interfaces to dpdk drivers, on the directory as `~/dpdk-stable-23.11.1/usertools#` there's a command line utility that lists interfaces and the drivers they are using 
 ```
@@ -157,12 +155,12 @@ the VM above has ovs-dpdk and two ports attached to the VMware Fusion switches Â
 ```
 ip netns add ns1
 ip netns add ns2
-ip link set ens224 netns ns1
-ip link set ens256 netns ns2
-ip netns exec ns1  ip address add 172.16.1.1/24 dev ens224
-ip netns exec ns2  ip address add 172.16.1.2/24 dev ens256
-ip netns exec ns1  ip link set dev ens224 up
-ip netns exec ns2  ip link set dev ens256 up
+ip link set ens192 netns ns1
+ip link set ens224 netns ns2
+ip netns exec ns1 ip address add 172.16.1.1/24 dev ens192
+ip netns exec ns2 ip address add 172.16.1.2/24 dev ens224
+ip netns exec ns1 ip link set dev ens192 up
+ip netns exec ns2 ip link set dev ens224 up
 ```
 
 # ping testing 
